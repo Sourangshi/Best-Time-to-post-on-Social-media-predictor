@@ -1,0 +1,14 @@
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+scipy
+scikit-learn
+statsmodels
+prophet
+tensorflow
+streamlit
+google-api-python-client
+ruptures
+xgboost
