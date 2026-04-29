@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-import os      
-import gdown   
+import os
+import gdown
 from googleapiclient.discovery import build
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import zscore
@@ -21,7 +21,7 @@ st.set_page_config(
 # --- Google Drive Model Config ---
 MODEL_PATH = 'rf_model.pkl'
 GOOGLE_DRIVE_FILE_ID = '1-F1oabEGcrJlf76KniVPLSvmErd8MM3Z' 
-DOWNLOAD_URL = f'https://drive.google.com/drive/folders/1-F1oabEGcrJlf76KniVPLSvmErd8MM3Z?usp=drive_link'
+DOWNLOAD_URL = f'https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}'
 
 @st.cache_resource
 def load_rf_model():
@@ -48,11 +48,15 @@ if page == "Analytics Dashboard":
     def load_data():
         # --- Instagram Data ---
         try:
+            # IMPORTANT: Check GitHub to ensure the filename matches exactly
             insta = pd.read_csv("Instagram_Analytics.csv")
             insta = insta.loc[:, ~insta.columns.duplicated()].copy()
             insta['platform'] = 'Instagram'
-            if 'post_datetime' in insta.columns:
-                insta['publishedAt'] = pd.to_datetime(insta['post_datetime'], errors='coerce', utc=True)
+            
+            # Use post_datetime or common timestamp column
+            date_col = next((c for c in ['post_datetime', 'timestamp', 'date'] if c in insta.columns), None)
+            if date_col:
+                insta['publishedAt'] = pd.to_datetime(insta[date_col], errors='coerce', utc=True)
         except:
             insta = pd.DataFrame()
 
@@ -83,12 +87,12 @@ if page == "Analytics Dashboard":
         yt = pd.DataFrame(yt_rows)
         df = pd.concat([insta, yt], ignore_index=True).dropna(subset=['publishedAt'])
 
-        # --- FIXED: Preprocessing logic to prevent AttributeError ---
+        # Data Cleaning: Create missing columns and fill NaNs
         for col in ['likes', 'comments', 'views', 'engagement_rate']:
             if col not in df.columns:
                 df[col] = 0.0
             else:
-                df[col] = df[col].fillna(0)
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         
         df['hour'] = df['publishedAt'].dt.hour
         df['day'] = df['publishedAt'].dt.dayofweek
@@ -100,7 +104,7 @@ if page == "Analytics Dashboard":
             (df['likes'] + 2 * df['comments']) / (df['views'] / 1000 + 1)
         )
 
-        # Scaling
+        # Normalization
         scaler = MinMaxScaler()
         df['engagement_scaled'] = 0.0
         for platform in df['platform'].unique():
@@ -110,9 +114,14 @@ if page == "Analytics Dashboard":
         return df
 
     df = load_data()
+    
+    # If Instagram didn't load, warn the user
+    if "Instagram" not in df['platform'].unique():
+        st.sidebar.warning("⚠️ Instagram CSV not detected. Check filename on GitHub.")
+
     z = zscore(df['engagement_scaled'])
 
-    # Metrics (Kept exactly in your original location)
+    # --- METRICS (Keep at top as per your request) ---
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Total Posts", len(df))
     m2.metric("Avg Scaled Eng.", round(df['engagement_scaled'].mean(), 4))
@@ -120,6 +129,7 @@ if page == "Analytics Dashboard":
     m3.metric("Peak Hour", f"{best_h}:00")
     m4.metric("Anomalies", int((abs(z) > 2).sum()))
 
+    # --- TABS (Structure preserved exactly) ---
     tab1, tab2, tab3, tab4 = st.tabs(["🔥 Heatmap", "⏰ Recommendations", "📉 Anomalies", "📂 Raw Data"])
 
     with tab1:
@@ -133,10 +143,13 @@ if page == "Analytics Dashboard":
     with tab2:
         st.subheader("Best Time Recommendations")
         days_names=['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        
+        # Hardcoded results logic kept as per your screenshot
         results=[
             {'platform':'Instagram', 'day':6, 'hour':13},
             {'platform':'YouTube', 'day':2, 'hour':23}
         ]
+
         for r in results:
             start, end = (r['hour']-1)%24, (r['hour']+1)%24
             st.success(
@@ -179,6 +192,7 @@ elif page == "Engagement Predictor":
             hashtags = st.number_input("Hashtags", value=5)
 
         if st.button("Predict Engagement"):
+            # Model expects 9 features
             media_type, content_cat, traffic, cta = 1, 1, 1, 1
             row = [[hour, day, followers, caption_length, hashtags, media_type, content_cat, traffic, cta]]
             prediction = rf.predict(row)
