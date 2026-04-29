@@ -20,7 +20,7 @@ st.set_page_config(
 
 # --- Updated Model Config (Fixes Error: 60) ---
 MODEL_PATH = 'rf_model.pkl'
-GOOGLE_DRIVE_FILE_ID = '1-F1oabEGcrJlf76KniVPLSvmErd8MM3Z' 
+GOOGLE_DRIVE_FILE_ID = '1Wz1quiyYqtvRlJaWu9E_ItkWlntLrps-' 
 # Using the direct export link is more stable for Streamlit
 DOWNLOAD_URL = f'https://drive.google.com/drive/folders/1-F1oabEGcrJlf76KniVPLSvmErd8MM3Z?usp=drive_link'
 
